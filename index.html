@@ -13,6 +13,7 @@
     <div class="brand">Typo<span>thèque</span></div>
     <nav class="tabs">
       <button class="tab active" data-view="catalog">Polices</button>
+      <button class="tab" data-view="mockups">Mockups</button>
       <button class="tab" data-view="library">Mes polices <span class="tab-count" id="lib-count"></span></button>
       <button class="tab" data-view="sites">Sites</button>
     </nav>
@@ -41,6 +42,16 @@
     </section>
     <div id="grid" class="grid"></div>
     <div id="sentinel" class="sentinel"></div>
+  </main>
+
+  <!-- MOCKUPS -->
+  <main id="view-mockups" class="view hidden">
+    <section class="mb-bar">
+      <input id="mb-search" type="search" placeholder="Rechercher : poteau, écran, t-shirt…" autocomplete="off">
+      <div class="chips" id="mb-chips"></div>
+    </section>
+    <div id="mb-grid" class="mb-grid"></div>
+    <p class="mb-credit muted">Photos : <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a>. Cliquez sur un mockup pour y poser votre texte avec la police de votre choix.</p>
   </main>
 
   <!-- MES POLICES -->
@@ -196,14 +207,23 @@
       </div>
     </div>
     <div class="mk-body">
-      <aside class="mk-scenes" id="mk-scenes"></aside>
+      <aside class="mk-side">
+        <select id="mk-cat" title="Catégorie de mockups"></select>
+        <div class="mk-scenes" id="mk-scenes"></div>
+      </aside>
       <div class="mk-stage" id="mk-stage">
         <canvas id="mk-canvas" width="1600" height="1067"></canvas>
         <svg id="mk-overlay" class="mk-overlay hidden"><polygon id="mk-poly"></polygon></svg>
-        <div class="mk-credit">Photos : Unsplash</div>
+        <a class="mk-credit" href="https://unsplash.com/" target="_blank" rel="noopener">Photos : Unsplash</a>
       </div>
       <input type="file" id="mk-upload" accept="image/*" hidden>
       <aside class="ed-props mk-props">
+        <h3>Police</h3>
+        <div class="mk-font">
+          <input id="mk-font-search" type="search" placeholder="Changer de police…" autocomplete="off">
+          <div id="mk-font-results" class="mk-font-results hidden"></div>
+        </div>
+        <select id="mk-font-variant" class="hidden"></select>
         <h3>Texte</h3>
         <textarea id="mk-text" rows="3">Votre texte ici</textarea>
         <label class="slider">Taille <span id="mk-size-v"></span><input type="range" id="mk-size" min="12" max="600" value="160"></label>
@@ -250,6 +270,7 @@
   <script src="app.js"></script>
   <script src="editor.js"></script>
   <script src="library.js"></script>
+  <script src="mockups-data.js"></script>
   <script src="mockup.js"></script>
 </body>
 </html>

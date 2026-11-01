@@ -162,5 +162,5 @@
   }).observe($('#editor'), { attributes: true, attributeFilter: ['class'] });
 
   updateCount();
-  window.Library = { save, all, render };
+  window.Library = { save, all, render, face };
 })();

@@ -11,32 +11,18 @@
   const ctx = canvas.getContext('2d');
   const NS = 'http://www.w3.org/2000/svg';
 
-  // Coins en proportion de l'image : [haut-gauche, haut-droit, bas-droit, bas-gauche]
-  const SCENES = [
-    { id: 'poteau', name: 'Panneau sur poteau', src: 'mockups/poteau.jpg', ink: '#111111', surface: '#ffffff',
-      quad: [[.347, .124], [.645, .173], [.645, .611], [.347, .575]] },
-    { id: 'abribus', name: 'Abribus', src: 'mockups/abribus.jpg', ink: '#111111', surface: '#ffffff',
-      quad: [[.386, .199], [.604, .199], [.604, .766], [.386, .766]] },
-    { id: 'cadre', name: 'Cadre', src: 'mockups/cadre.jpg', ink: '#111111', surface: '#ffffff',
-      quad: [[.400, .160], [.638, .160], [.638, .690], [.400, .690]] },
-    { id: 'print', name: 'Impression', src: 'mockups/print.jpg', ink: '#111111', surface: '#ffffff',
-      quad: [[.359, .225], [.644, .225], [.644, .827], [.359, .827]] },
-    { id: 'carte', name: 'Carte de visite', src: 'mockups/carte.jpg', ink: '#f2efe8', surface: '#1a1d24',
-      quad: [[.297, .328], [.757, .234], [.787, .619], [.397, .703]] },
-    { id: 'tshirt', name: 'T-shirt', src: 'mockups/tshirt.jpg', ink: '#111111', surface: '#ffffff',
-      quad: [[.300, .240], [.700, .240], [.700, .630], [.300, .630]] },
-    { id: 'tote', name: 'Tote bag', src: 'mockups/tote.jpg', ink: '#1a1a1a', surface: '#f1ece2',
-      quad: [[.322, .311], [.685, .311], [.693, .923], [.319, .918]] },
-    { id: 'livre', name: 'Livre', src: 'mockups/livre.jpg', ink: '#2a2a2a', surface: '#e9e6dd',
-      quad: [[.266, .229], [.797, .229], [.797, .843], [.266, .843]] },
-    { id: 'laptop', name: 'Ordinateur', src: 'mockups/laptop.jpg', ink: '#111111', surface: '#f6f4ef', fill: true, fillMode: 'normal',
-      quad: [[.321, .271], [.676, .271], [.679, .633], [.318, .633]] },
-  ];
+  const photoUrl = (id, w, q) => `https://images.unsplash.com/photo-${id}?w=${w}&q=${q}&fm=jpg`;
+  const fromData = m => ({
+    ...m, src: photoUrl(m.photo, 1600, 80), thumb: photoUrl(m.photo, 400, 60),
+    quad0: m.quad.map(p => [...p]),
+  });
+  const SCENES = (window.MOCKUPS || []).map(fromData);
+  const MINE = 'Mes images';
   const images = new Map();
   let customN = 0;
 
   const M = {
-    family: null, label: '', scene: null, adjust: false,
+    family: null, label: '', font: null, scene: null, adjust: false, listCat: null, token: 0,
     st: { size: 160, lh: 105, ls: 0, align: 'center', upper: false, dx: 0, dy: 0, ink: '#111111', surface: '#ffffff', fill: false },
   };
 
@@ -47,8 +33,9 @@
     if (!images.has(scene.src)) {
       images.set(scene.src, new Promise((res, rej) => {
         const i = new Image();
+        i.crossOrigin = 'anonymous';   // nécessaire pour exporter le canvas en PNG
         i.onload = () => res(i);
-        i.onerror = rej;
+        i.onerror = () => { images.delete(scene.src); rej(new Error('photo indisponible')); };
         i.src = scene.src;
       }));
     }
@@ -232,7 +219,11 @@
       M.scene.quad[+i] = [x, y];
       draw();
     };
-    const up = () => { overlay.removeEventListener('pointermove', move); overlay.removeEventListener('pointerup', up); };
+    const up = () => {
+      overlay.removeEventListener('pointermove', move);
+      overlay.removeEventListener('pointerup', up);
+      saveImport(M.scene);
+    };
     overlay.addEventListener('pointermove', move);
     overlay.addEventListener('pointerup', up);
   });
@@ -283,8 +274,14 @@
 
   async function setScene(scene) {
     M.scene = scene;
-    document.querySelectorAll('.mk-scene').forEach(b => b.classList.toggle('on', b.dataset.id === scene.id));
-    const img = await loadImage(scene);
+    const token = ++M.token;
+    highlightScene();
+    let img;
+    try { img = await loadImage(scene); } catch {
+      window.Typo.toast('Cette photo n’a pas pu être chargée. Vérifiez la connexion ou essayez-en une autre.');
+      return;
+    }
+    if (token !== M.token) return;
     const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
     canvas.width = Math.round(img.naturalWidth * k);
     canvas.height = Math.round(img.naturalHeight * k);
@@ -302,8 +299,9 @@
     b.dataset.id = scene.id;
     const im = document.createElement('img');
     im.className = 'mk-thumb';
-    im.src = scene.src;
+    im.src = scene.thumb || scene.src;
     im.alt = '';
+    im.loading = 'lazy';
     b.append(im);
     const label = document.createElement('span');
     label.textContent = scene.name;
@@ -312,7 +310,21 @@
     return b;
   }
 
+  function categories() {
+    return [...new Set(SCENES.map(s => s.cat))].sort((a, b) => (a === MINE ? -1 : b === MINE ? 1 : a.localeCompare(b, 'fr')));
+  }
+  function highlightScene() {
+    document.querySelectorAll('.mk-scene').forEach(b => b.classList.toggle('on', !!M.scene && b.dataset.id === M.scene.id));
+  }
   function buildThumbs() {
+    const sel = $('#mk-cat');
+    sel.innerHTML = '';
+    for (const c of categories()) {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = `${c} (${SCENES.filter(s => s.cat === c).length})`;
+      sel.append(o);
+    }
+    if (M.listCat) sel.value = M.listCat;
     const box = $('#mk-scenes');
     box.innerHTML = '';
     const add = document.createElement('button');
@@ -321,9 +333,10 @@
     add.title = 'Importer votre propre photo de mockup';
     add.onclick = () => $('#mk-upload').click();
     box.append(add);
-    for (const s of SCENES) box.append(sceneThumb(s));
-    if (M.scene) document.querySelectorAll('.mk-scene').forEach(b => b.classList.toggle('on', b.dataset.id === M.scene.id));
+    for (const s of SCENES) if (s.cat === M.listCat) box.append(sceneThumb(s));
+    highlightScene();
   }
+  $('#mk-cat').addEventListener('change', e => { M.listCat = e.target.value; buildThumbs(); });
 
   const bind = (sel, key, fn = v => +v) => $(sel).addEventListener('input', e => { M.st[key] = fn(e.target.value); syncControls(); draw(); });
   bind('#mk-size', 'size');
@@ -337,30 +350,215 @@
   document.querySelectorAll('#mk-align button').forEach(b => b.onclick = () => { M.st.align = b.dataset.a; M.st.dx = 0; syncControls(); draw(); });
   $('#mk-recenter').onclick = () => { autoFit(); draw(); };
   $('#mk-adjust').onclick = () => { M.adjust = !M.adjust; if (M.scene) M.scene.adjusted = true; drawOverlay(); };
-  $('#mk-reset-zone').onclick = () => { M.scene.quad = M.scene.quad0.map(p => [...p]); autoFit(); draw(); };
-  for (const s of SCENES) s.quad0 = s.quad.map(p => [...p]);
+  $('#mk-reset-zone').onclick = () => { M.scene.quad = M.scene.quad0.map(p => [...p]); saveImport(M.scene); autoFit(); draw(); };
 
-  // « + » : importer sa propre image
+  /* ---------- Images importées (gardées dans ce navigateur) ---------- */
+
+  let dbPromise = null;
+  function db() {
+    if (!dbPromise) dbPromise = new Promise(resolve => {
+      try {
+        const req = indexedDB.open('typotheque-mockups', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('images', { keyPath: 'id' });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch { resolve(null); }
+    });
+    return dbPromise;
+  }
+  async function store(mode, fn) {
+    const d = await db();
+    if (!d) return null;
+    return new Promise((resolve, reject) => {
+      const t = d.transaction('images', mode);
+      const req = fn(t.objectStore('images'));
+      t.oncomplete = () => resolve(req.result);
+      t.onerror = () => reject(t.error);
+    });
+  }
+  function importScene(rec) {
+    const quad0 = [[.25, .25], [.75, .25], [.75, .75], [.25, .75]];
+    return {
+      id: rec.id, name: rec.name, cat: MINE, tags: 'importée', custom: true, blob: rec.blob,
+      src: URL.createObjectURL(rec.blob), ink: '#111111', surface: '#ffffff',
+      quad: rec.quad, quad0, adjusted: !!rec.adjusted,
+    };
+  }
+  function saveImport(s) {
+    if (!s || !s.custom) return;
+    s.adjusted = true;
+    store('readwrite', o => o.put({ id: s.id, name: s.name, blob: s.blob, quad: s.quad, adjusted: true })).catch(() => {});
+  }
+  async function importFile(file) {
+    const rec = {
+      id: 'img' + Date.now().toString(36),
+      name: file.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Mon image',
+      blob: file, quad: [[.25, .25], [.75, .25], [.75, .75], [.25, .75]],
+    };
+    const scene = importScene(rec);
+    try { await loadImage(scene); } catch {
+      URL.revokeObjectURL(scene.src);
+      window.Typo.toast('Ce fichier n’a pas pu être lu comme une image.');
+      return;
+    }
+    SCENES.unshift(scene);
+    try { await store('readwrite', o => o.put(rec)); } catch {
+      window.Typo.toast('Image utilisable, mais elle ne sera pas gardée après fermeture de la page.');
+    }
+    renderBank();
+    await open({ scene });
+    window.Typo.toast('Placez les 4 coins sur la surface où mettre le texte');
+  }
+  async function deleteImport(scene) {
+    const ok = await window.Typo.ask({ title: `Supprimer « ${scene.name} » ?`, html: '<p class="muted">Cette image sera retirée de vos mockups.</p>', ok: 'Supprimer' });
+    if (!ok) return;
+    SCENES.splice(SCENES.indexOf(scene), 1);
+    images.delete(scene.src);
+    URL.revokeObjectURL(scene.src);
+    if (M.scene === scene) M.scene = null;
+    await store('readwrite', o => o.delete(scene.id)).catch(() => {});
+    renderBank();
+  }
   $('#mk-upload').addEventListener('change', e => {
     const file = e.target.files[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const quad = [[.25, .25], [.75, .25], [.75, .75], [.25, .75]];
-      const scene = {
-        id: 'custom-' + (++customN), name: file.name.replace(/\.[^.]+$/, '').slice(0, 24) || 'Mon image',
-        src: url, img, custom: true, ink: '#111111', surface: '#ffffff',
-        quad, quad0: quad.map(p => [...p]),
-      };
-      SCENES.unshift(scene);
-      buildThumbs();
-      setScene(scene);
-      window.Typo.toast('Placez les 4 coins sur la surface où mettre le texte');
-    };
-    img.src = url;
     e.target.value = '';
+    if (file) importFile(file);
   });
+
+  /* ---------- Banque de mockups (onglet) ---------- */
+
+  const bank = { cat: null };
+  const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  function renderBank() {
+    const chips = $('#mb-chips');
+    chips.innerHTML = '';
+    if (bank.cat && !SCENES.some(s => s.cat === bank.cat)) bank.cat = null;
+    const chip = (label, val, n) => {
+      const b = document.createElement('button');
+      b.className = 'chip' + (bank.cat === val ? ' on' : '');
+      b.textContent = label;
+      const small = document.createElement('small');
+      small.textContent = n;
+      b.append(small);
+      b.onclick = () => { bank.cat = val; renderBank(); };
+      chips.append(b);
+    };
+    chip('Toutes', null, SCENES.length);
+    for (const c of categories()) chip(c, c, SCENES.filter(s => s.cat === c).length);
+
+    const words = norm($('#mb-search').value).split(/\s+/).filter(Boolean);
+    const list = SCENES.filter(s => {
+      if (bank.cat && s.cat !== bank.cat) return false;
+      const hay = norm(`${s.name} ${s.cat} ${s.tags || ''}`);
+      return words.every(w => hay.includes(w));
+    });
+    const grid = $('#mb-grid');
+    grid.innerHTML = '';
+    const add = document.createElement('div');
+    add.className = 'mb-card mb-add';
+    add.innerHTML = '<button class="mb-open"><span class="mb-plus">+</span><span class="mb-info">Importer une image<small>Votre propre photo</small></span></button>';
+    add.querySelector('button').onclick = () => $('#mk-upload').click();
+    grid.append(add);
+    for (const s of list) {
+      const card = document.createElement('div');
+      card.className = 'mb-card';
+      card.innerHTML = '<button class="mb-open"><img alt="" loading="lazy"><span class="mb-info"><span class="mb-name"></span><small></small></span></button>';
+      const img = card.querySelector('img');
+      img.src = s.thumb || s.src;
+      img.alt = s.name;
+      card.querySelector('.mb-name').textContent = s.name;
+      card.querySelector('small').textContent = s.cat;
+      card.querySelector('.mb-open').onclick = () => open({ scene: s });
+      if (s.custom) {
+        const del = document.createElement('button');
+        del.className = 'mb-del';
+        del.textContent = '×';
+        del.title = 'Supprimer cette image';
+        del.onclick = () => deleteImport(s);
+        card.append(del);
+      }
+      grid.append(card);
+    }
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'mb-empty';
+      empty.textContent = 'Aucun mockup ne correspond. Essayez un autre mot, ou importez votre image.';
+      grid.append(empty);
+    }
+  }
+  $('#mb-search').addEventListener('input', renderBank);
+
+  /* ---------- Choix de la police ---------- */
+
+  async function useFont(font, variant) {
+    const v = variant || window.Typo.defaultVariant(font);
+    let name;
+    try { name = await window.Typo.loadFace(font, v); } catch {
+      window.Typo.toast('Cette police n’a pas pu être chargée.');
+      return false;
+    }
+    M.font = font;
+    M.family = name;
+    M.label = `${font.family} — ${window.Typo.variantName(v)}`;
+    syncFontUi(v);
+    return true;
+  }
+  function useFace(family, label) {
+    M.font = null;
+    M.family = family;
+    M.label = label;
+    syncFontUi();
+  }
+  function syncFontUi(variant) {
+    $('#mk-title').textContent = 'Aperçu — ' + M.label;
+    $('#mk-font-search').value = '';
+    $('#mk-font-search').placeholder = M.label;
+    const sel = $('#mk-font-variant');
+    sel.innerHTML = '';
+    sel.classList.toggle('hidden', !M.font || M.font.variants.length < 2);
+    if (!M.font) return;
+    M.font.variants.forEach((v, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = window.Typo.variantName(v);
+      o.selected = v === variant;
+      sel.append(o);
+    });
+  }
+  async function applyFont() {
+    try { await document.fonts.load(`80px '${M.family}'`); } catch {}
+    if (M.scene && M.scene.loaded) { autoFit(); draw(); }
+  }
+  $('#mk-font-variant').addEventListener('change', async e => {
+    if (await useFont(M.font, M.font.variants[+e.target.value])) applyFont();
+  });
+
+  const results = $('#mk-font-results');
+  async function showFontResults() {
+    const q = norm($('#mk-font-search').value.trim());
+    const mine = (await window.Library.all()).filter(e => norm(e.name).includes(q)).slice(0, 8);
+    const fonts = window.Typo.fonts().filter(f => norm(f.family).includes(q))
+      .sort((a, b) => a.family.localeCompare(b.family, 'fr')).slice(0, 40);
+    results.innerHTML = '';
+    const row = (name, sub, fn) => {
+      const b = document.createElement('button');
+      b.textContent = name;
+      const small = document.createElement('small');
+      small.textContent = sub;
+      b.append(small);
+      // pointerdown : avant que le champ perde le focus et ferme la liste
+      b.addEventListener('pointerdown', async ev => { ev.preventDefault(); results.classList.add('hidden'); await fn(); applyFont(); });
+      results.append(b);
+    };
+    for (const e of mine) row(e.name, 'Mes polices', async () => useFace(await window.Library.face(e), `${e.name} — ${e.style}`));
+    for (const f of fonts) row(f.family, `${f.variants.length} style${f.variants.length > 1 ? 's' : ''}`, () => useFont(f));
+    if (!mine.length && !fonts.length) results.innerHTML = '<p>Aucune police trouvée.</p>';
+    results.classList.remove('hidden');
+  }
+  $('#mk-font-search').addEventListener('input', showFontResults);
+  $('#mk-font-search').addEventListener('focus', showFontResults);
+  $('#mk-font-search').addEventListener('blur', () => results.classList.add('hidden'));
 
   // glisser le texte : on convertit la souris en coordonnées du plan
   canvas.addEventListener('pointerdown', ev => {
@@ -396,14 +594,21 @@
 
   /* ---------- Ouverture ---------- */
 
-  async function open({ family, label }) {
-    M.family = family;
-    M.label = label;
-    $('#mk-title').textContent = 'Aperçu — ' + label;
+  /* font + variant : police du catalogue ; family + label : police déjà chargée (modifiée, Mes polices) */
+  async function open({ family, label, font, variant, scene } = {}) {
     $('#mockup').classList.remove('hidden');
-    try { await document.fonts.load(`80px '${family}'`); } catch {}
+    if (family) useFace(family, label);
+    else if (font) await useFont(font, variant);
+    else if (!M.family) {
+      await window.Typo.ready;
+      const inter = window.Typo.fonts().find(f => f.key === 'fo:inter');
+      if (!inter || !(await useFont(inter))) useFace('Inter', 'Inter');
+    } else syncFontUi();
+    try { await document.fonts.load(`80px '${M.family}'`); } catch {}
+    const target = scene || M.scene || SCENES.find(s => s.id === 'poteau') || SCENES[0];
+    M.listCat = target.cat;
     buildThumbs();
-    await setScene(M.scene || SCENES.find(s => s.id === 'poteau'));
+    await setScene(target);
   }
   function close() { $('#mockup').classList.add('hidden'); }
 
@@ -412,5 +617,13 @@
     if (e.key === 'Escape' && !$('#mockup').classList.contains('hidden') && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) close();
   });
 
-  window.Mockup = { open, close, _state: M };
+  (async () => {
+    try {
+      const saved = (await store('readonly', o => o.getAll())) || [];
+      saved.forEach(rec => SCENES.unshift(importScene(rec)));
+    } catch {}
+    renderBank();
+  })();
+
+  window.Mockup = { open, close, _state: M, _scenes: SCENES };
 })();

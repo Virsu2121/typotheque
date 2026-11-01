@@ -292,7 +292,8 @@ $('#size').addEventListener('input', e => $$('.card-sample').forEach(el => el.st
 
 function showView(view) {
   $$('.tab').forEach(x => x.classList.toggle('active', x.dataset.view === view));
-  $$('main.view').forEach(v => v.classList.toggle('hidden', v.id !== 'view-' + view));
+  $('main.view').forEach(v => v.classList.toggle('hidden', v.id !== 'view-' + view));
+  $('#count').classList.toggle('hidden', view !== 'catalog');
   if (view === 'library' && window.Library) window.Library.render();
 }
 $$('.tab').forEach(t => t.onclick = () => showView(t.dataset.view));
@@ -467,11 +468,10 @@ document.addEventListener('keydown', e => {
 
 $('#d-mockup').onclick = async () => {
   const v = defaultVariant(current);
-  const name = await loadFace(current, v);
-  window.Mockup.open({ family: name, label: `${current.family} — ${variantName(v)}` });
+  window.Mockup.open({ font: current, variant: v });
 };
 
-window.Typo = { toast, saveBlob, variantName, loadFace, ask, showView };
+window.Typo = { toast, saveBlob, variantName, loadFace, ask, showView, defaultVariant, fonts: () => state.fonts };
 
 renderSites();
-loadCatalog();
+window.Typo.ready = loadCatalog();
