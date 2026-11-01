@@ -270,7 +270,9 @@ kbd { background: #111; border: 1px solid var(--line-2); border-radius: 4px; pad
   .ed-body { grid-template-columns: 44px 1fr; }
   .ed-glyphs, .ed-props { display: none; }
   .mk-body { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
-  .mk-stage { overflow: visible; padding: 16px; }
+  .mk-stage { overflow: visible; padding: 16px; min-height: max-content; }
+  .mk-scenes { min-height: max-content; }
+  .mk-props { overflow: visible; min-height: max-content; }
   .mk-scenes { flex-direction: row; overflow-x: auto; border-right: 0; }
   .mk-scene { flex: 0 0 120px; }
   .mk-props { display: block; }
