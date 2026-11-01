@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Typothèque</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Typo<span>thèque</span></div>
+    <nav class="tabs">
+      <button class="tab active" data-view="catalog">Polices</button>
+      <button class="tab" data-view="library">Mes polices <span class="tab-count" id="lib-count"></span></button>
+      <button class="tab" data-view="sites">Sites</button>
+    </nav>
+    <div class="count" id="count"></div>
+  </header>
+
+  <!-- CATALOGUE -->
+  <main id="view-catalog" class="view">
+    <section class="toolbar">
+      <input id="search" type="search" placeholder="Rechercher une police…" autocomplete="off">
+      <input id="sample" type="text" placeholder="Votre texte d’aperçu" value="Le vif renard brun">
+      <label class="size">Taille <input id="size" type="range" min="16" max="120" value="44"></label>
+      <select id="sort">
+        <option value="az">A → Z</option>
+        <option value="za">Z → A</option>
+        <option value="recent">Plus récentes</option>
+        <option value="weights">Nombre de graisses</option>
+      </select>
+    </section>
+    <section class="filters">
+      <div class="chips" id="cat-chips"></div>
+      <div class="chips" id="src-chips"></div>
+      <label class="check"><input type="checkbox" id="f-italic"> Avec italique</label>
+      <label class="check"><input type="checkbox" id="f-variable"> Variable</label>
+      <label class="check"><input type="checkbox" id="f-fav"> ★ Favoris</label>
+    </section>
+    <div id="grid" class="grid"></div>
+    <div id="sentinel" class="sentinel"></div>
+  </main>
+
+  <!-- MES POLICES -->
+  <main id="view-library" class="view hidden">
+    <div class="lib-head">
+      <div>
+        <h1>Mes polices</h1>
+        <p class="muted">Les polices que vous avez modifiées et enregistrées. Cliquez sur un nom pour le changer.</p>
+      </div>
+      <input id="lib-sample" type="text" value="Portez ce vieux whisky au juge blond">
+    </div>
+    <div id="lib-grid" class="lib-grid"></div>
+  </main>
+
+  <!-- SITES -->
+  <main id="view-sites" class="view hidden">
+    <div id="sites"></div>
+  </main>
+
+  <!-- FICHE POLICE -->
+  <div id="detail" class="detail hidden">
+    <div class="detail-inner">
+      <div class="detail-head">
+        <button class="back" id="detail-close">← Retour</button>
+        <div>
+          <h1 id="d-name"></h1>
+          <div class="meta" id="d-meta"></div>
+        </div>
+        <div class="detail-actions">
+          <button id="d-fav" class="btn ghost">☆ Favori</button>
+          <button id="d-mockup" class="btn ghost">◧ Aperçu</button>
+          <a id="d-zip" class="btn primary" target="_blank" rel="noopener">⬇ Télécharger la famille (.zip)</a>
+        </div>
+      </div>
+      <div class="detail-controls">
+        <input id="d-text" type="text" value="Portez ce vieux whisky au juge blond qui fume">
+        <label>Taille <input id="d-size" type="range" min="12" max="160" value="48"></label>
+        <label>Interlettre <input id="d-track" type="range" min="-10" max="40" value="0"></label>
+        <div class="seg" id="d-filter">
+          <button class="on" data-f="all">Tout</button>
+          <button data-f="normal">Romain</button>
+          <button data-f="italic">Italique</button>
+        </div>
+      </div>
+      <div id="d-styles" class="styles"></div>
+      <h2 class="sub">Glyphes</h2>
+      <div id="d-glyphs" class="glyphs"></div>
+    </div>
+  </div>
+
+  <!-- ÉDITEUR -->
+  <div id="editor" class="editor hidden">
+    <div class="ed-top">
+      <button class="back" id="ed-close">← Fermer</button>
+      <div class="ed-title" id="ed-title">Éditeur</div>
+      <div class="ed-top-actions">
+        <button class="btn ghost" id="ed-undo" title="Annuler (Ctrl+Z)">↶</button>
+        <button class="btn ghost" id="ed-redo" title="Rétablir (Ctrl+Maj+Z)">↷</button>
+        <button class="btn ghost" id="ed-outline" title="Mode tracé (Ctrl+Y)">Tracé</button>
+        <button class="btn ghost" id="ed-reset">Réinitialiser la lettre</button>
+        <button class="btn ghost" id="ed-mockup">◧ Aperçu</button>
+        <button class="btn ghost" id="ed-export">⬇ .otf</button>
+        <button class="btn primary" id="ed-save">Enregistrer</button>
+      </div>
+    </div>
+    <div class="ed-body">
+      <aside class="ed-tools" id="ed-tools">
+        <button data-tool="select" title="Sélection (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="currentColor"/></svg></button>
+        <button data-tool="direct" title="Sélection directe (A)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+        <button data-tool="pen" title="Plume (P) — clic sur un segment : ajoute un point · clic sur un point : le supprime · clic dans le vide : nouveau tracé"><svg viewBox="0 0 24 24"><path d="M12 2l5 9-5 11-5-11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="11" r="1.6" fill="currentColor"/></svg></button>
+        <button data-tool="add" title="Ajout de point d’ancrage (+)"><svg viewBox="0 0 24 24"><path d="M9 3l4 8-4 10-4-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M16 6h6M19 3v6" stroke="currentColor" stroke-width="1.8"/></svg></button>
+        <button data-tool="remove" title="Suppression de point d’ancrage (-)"><svg viewBox="0 0 24 24"><path d="M9 3l4 8-4 10-4-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M16 6h6" stroke="currentColor" stroke-width="1.8"/></svg></button>
+        <button data-tool="convert" title="Conversion de point d’ancrage (Maj+C)"><svg viewBox="0 0 24 24"><path d="M4 20L12 4l8 16" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="4" r="2" fill="currentColor"/></svg></button>
+        <div class="sep"></div>
+        <button data-tool="hand" title="Main (H, ou maintenir Espace)"><svg viewBox="0 0 24 24"><path d="M8 11V5a1.5 1.5 0 013 0v5V4a1.5 1.5 0 013 0v6V5.5a1.5 1.5 0 013 0V14c0 4-2.5 7-6.5 7S5 18 4 15l-1.5-3.5a1.4 1.4 0 012.4-1.4L8 13z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+        <button data-tool="zoom" title="Zoom (Z) — Alt+clic pour dézoomer"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 14.5L20 20" stroke="currentColor" stroke-width="2"/></svg></button>
+      </aside>
+      <aside class="ed-glyphs">
+        <input id="ed-gsearch" type="search" placeholder="Glyphe…">
+        <div id="ed-glist" class="ed-glist"></div>
+      </aside>
+      <div class="ed-canvas-wrap" id="ed-wrap">
+        <svg id="ed-svg" class="ed-svg"></svg>
+        <div class="ed-hint" id="ed-hint"></div>
+        <div class="ed-loading hidden" id="ed-loading">Chargement de la police…</div>
+      </div>
+      <aside class="ed-props">
+        <h3>Point</h3>
+        <div class="prop-grid">
+          <label>X <input type="number" id="p-x" disabled></label>
+          <label>Y <input type="number" id="p-y" disabled></label>
+        </div>
+        <div class="prop-row" id="p-type">—</div>
+        <div class="prop-btns">
+          <button class="btn ghost sm" id="p-smooth">Lisse</button>
+          <button class="btn ghost sm" id="p-corner">Angle</button>
+          <button class="btn ghost sm" id="p-reverse" title="Inverser le sens du tracé (utile pour creuser un contour)">⇄ Sens</button>
+        </div>
+        <h3>Glyphe</h3>
+        <div class="prop-grid">
+          <label>Chasse <input type="number" id="g-adv"></label>
+          <label>Approche G <input type="number" id="g-lsb"></label>
+        </div>
+        <div class="prop-row small" id="g-info"></div>
+        <h3>Transformer</h3>
+        <label class="slider">Inclinaison <span id="t-skew-v">0°</span><input type="range" id="t-skew" min="-30" max="30" value="0"></label>
+        <label class="slider">Largeur <span id="t-scalex-v">100%</span><input type="range" id="t-scalex" min="50" max="150" value="100"></label>
+        <label class="slider">Hauteur <span id="t-scaley-v">100%</span><input type="range" id="t-scaley" min="50" max="150" value="100"></label>
+        <label class="slider">Approche <span id="t-track-v">0</span><input type="range" id="t-track" min="-100" max="200" value="0"></label>
+        <div class="apply-btns">
+          <button class="btn primary" id="t-apply-glyph">Appliquer à cette lettre</button>
+          <button class="btn ghost" id="t-apply-all">Appliquer à toute la police</button>
+        </div>
+        <div class="prop-row small muted" id="t-picked"></div>
+        <div class="prop-row small muted">Avec des points sélectionnés, « cette lettre » ne transforme que ces points.</div>
+        <h3>Raccourcis</h3>
+        <ul class="keys">
+          <li><kbd>V</kbd> Sélection · <kbd>A</kbd> Directe</li>
+          <li><kbd>P</kbd> Plume · <kbd>Maj</kbd>+<kbd>C</kbd> Convertir</li>
+          <li><kbd>Alt</kbd> + glisser poignée : casser</li>
+          <li><kbd>←↑→↓</kbd> déplacer · <kbd>Maj</kbd> ×10</li>
+          <li><kbd>Suppr</kbd> supprimer les points</li>
+          <li><kbd>Ctrl</kbd>+<kbd>0</kbd> ajuster · molette zoom</li>
+        </ul>
+      </aside>
+    </div>
+    <div class="ed-preview" id="ed-preview">
+      <div class="ed-resize" id="ed-resize" title="Glisser pour agrandir l’aperçu"></div>
+      <div class="ed-pbar">
+        <input id="ed-ptext" type="text" value="Hamburgefonstiv 0123">
+        <label class="psize">Taille <input id="ed-psize" type="range" min="24" max="260" value="96"> <span id="ed-psize-v">96 px</span></label>
+        <label class="check"><input type="checkbox" id="ed-pcompare" checked> Comparer à l’original</label>
+        <div class="seg" id="ed-pbg"><button data-bg="dark" class="on">Sombre</button><button data-bg="light">Clair</button></div>
+      </div>
+      <div class="ed-pstage" id="ed-pstage">
+        <div class="ed-ptag">Modifiée <span>· cliquez une lettre pour l’éditer</span></div>
+        <div id="ed-pout" class="ed-pout"></div>
+        <div id="ed-porig-wrap">
+          <div class="ed-ptag">Original</div>
+          <div id="ed-porig" class="ed-porig"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDIO APERÇU -->
+  <div id="mockup" class="mockup hidden">
+    <div class="ed-top">
+      <button class="back" id="mk-close">← Retour</button>
+      <div class="ed-title" id="mk-title">Aperçu</div>
+      <div class="ed-top-actions">
+        <button class="btn primary" id="mk-export">⬇ Image (.png)</button>
+      </div>
+    </div>
+    <div class="mk-body">
+      <aside class="mk-scenes" id="mk-scenes"></aside>
+      <div class="mk-stage" id="mk-stage">
+        <canvas id="mk-canvas" width="1600" height="1067"></canvas>
+        <svg id="mk-overlay" class="mk-overlay hidden"><polygon id="mk-poly"></polygon></svg>
+        <div class="mk-credit">Photos : Unsplash</div>
+      </div>
+      <input type="file" id="mk-upload" accept="image/*" hidden>
+      <aside class="ed-props mk-props">
+        <h3>Texte</h3>
+        <textarea id="mk-text" rows="3">Votre texte ici</textarea>
+        <label class="slider">Taille <span id="mk-size-v"></span><input type="range" id="mk-size" min="12" max="600" value="160"></label>
+        <label class="slider">Interligne <span id="mk-lh-v"></span><input type="range" id="mk-lh" min="70" max="200" value="105"></label>
+        <label class="slider">Interlettre <span id="mk-ls-v"></span><input type="range" id="mk-ls" min="-20" max="60" value="0"></label>
+        <div class="seg mk-align" id="mk-align">
+          <button data-a="left">Gauche</button><button data-a="center" class="on">Centre</button><button data-a="right">Droite</button>
+        </div>
+        <label class="check"><input type="checkbox" id="mk-upper"> MAJUSCULES</label>
+        <h3>Couleurs</h3>
+        <div class="prop-grid">
+          <label>Texte <input type="color" id="mk-ink"></label>
+          <label>Support <input type="color" id="mk-surface"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="mk-fill"> Colorer le support</label>
+        <div class="prop-btns"><button class="btn ghost sm" id="mk-recenter">Recentrer le texte</button></div>
+        <div class="prop-row small muted">Glissez le texte sur l’image pour le placer.</div>
+        <h3>Zone du texte</h3>
+        <div class="prop-btns">
+          <button class="btn ghost sm" id="mk-adjust">⬚ Ajuster les coins</button>
+          <button class="btn ghost sm" id="mk-reset-zone">Réinitialiser</button>
+        </div>
+        <div class="prop-row small muted">Placez les 4 coins sur la surface (affiche, écran, tissu…) : le texte suit la perspective.</div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- FENÊTRE (nom, confirmation) -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="modal-cancel">Annuler</button>
+        <button class="btn primary" id="modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+  <script src="fontshare-data.js"></script>
+  <script src="app.js"></script>
+  <script src="editor.js"></script>
+  <script src="library.js"></script>
+  <script src="mockup.js"></script>
+</body>
+</html>
